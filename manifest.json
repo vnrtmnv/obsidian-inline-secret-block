@@ -1,11 +1,10 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
+	"id": "inline-secret-block",
+	"name": "Inline Secret Block",
 	"version": "1.0.0",
-	"minAppVersion": "1.0.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"minAppVersion": "1.4.0",
+	"description": "Auto-encrypt fenced secret blocks inside notes with AES-256-GCM. Multi-key passphrase support keeps passwords and tokens safe from sync, backups, and AI agents reading the vault.",
+	"author": "vnrtmvn",
+	"authorUrl": "https://github.com/vnrtmvn",
 	"isDesktopOnly": false
 }

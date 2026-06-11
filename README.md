@@ -1,92 +1,197 @@
-# Obsidian Sample Plugin
+# Inline Secret Block
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+An Obsidian plugin that encrypts fenced code blocks inside your notes using
+AES-256-GCM and a passphrase. Useful when your vault is read by sync services,
+backup tools, or AI agents and you do not want passwords, tokens, or other
+secrets sitting in plaintext.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+You write a `secret` block, the plugin asks for a passphrase as soon as the
+block is closed, and rewrites it as a `secret-lock` block whose body is opaque
+ciphertext. In reading view the block renders as a small card with a **Show**
+button that decrypts it in place. Multiple passphrases can be in use at the
+same time — the plugin remembers each one you have entered in the current
+session and offers them as choices for new blocks.
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
+## How it works
 
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and outputs a Notice on click.
-- Registers a global interval which logs 'setInterval' to the console.
+You wrap the sensitive content in a fenced block with the language `secret`:
 
-## First time developing plugins?
+````md
+The login for service X:
 
-Quick starting guide for new plugin devs:
+```secret
+login: alice
+pass: hunter2
+token: gh_xxxxxxxxxxxxxxxxxx
+```
+````
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `src/main.ts` to `main.js`.
-- Make changes to `src/main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+The moment the closing fence is in place, a modal opens. If you have not used
+any passphrase yet, it just asks for one. If you have already used some in
+this session, it lists them (labelled like `a...2 9f1c0b` — first character,
+last character, and the first 6 hex characters of the passphrase hash) so you
+can pick an existing key, or enter a new one. Pressing **Submit** replaces
+the block with:
 
-## Releasing new releases
+````md
+The login for service X:
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+```secret-lock
+QmFzZTY0ZW5jb2RlZHBheWxvYWQuLi4=
+```
+````
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+Pressing **Cancel** (or **Esc**) leaves the block as plaintext. If you change
+the body afterwards, the prompt comes back; if you do not touch it, the
+plugin will not nag you again about that exact block.
 
-## Adding your plugin to the community plugin list
+In **reading view**, each `secret-lock` block becomes a card with a lock icon
+and **Show** / **Edit** / **Copy** buttons. Press **Show** to decrypt and
+reveal the content; press **Hide** to clear it from the DOM again. **Copy**
+sends the plaintext to the clipboard without revealing it on screen.
+**Edit** decrypts the block back to a plain `secret` block right in the
+file so you can change it, and auto-encrypt picks it up again as soon as
+you click outside or stop typing. The plugin tries every passphrase it has
+in memory automatically — you only see the password modal if none of them
+fit.
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+Once you've used a key in a particular note, the plugin remembers it as the
+"intended key" for that file: subsequent auto-encrypt operations in the same
+file skip the chooser and reuse that key directly. Pick a different key from
+the chooser any time to override.
 
-## How to use
+If you need to convert many blocks in one go (e.g. before bulk-editing a
+note), run **Decrypt secret-lock blocks in current note** to revert all
+`secret-lock` blocks in the active note back to `secret`.
 
-- Clone this repo.
-- Make sure your NodeJS is at least v18 (`node --version`).
-- `npm i` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+## Commands
 
-## Manually installing the plugin
+| Command                                       | What it does                                                                                                                       |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Decrypt secret-lock blocks in current note**| Decrypts every `` ```secret-lock `` block back to `` ```secret `` so you can edit it. Tries every key in memory; if none fits, prompts. |
+| **Forget all passphrases**                    | Clears every passphrase and derived-key from memory. The next operation will prompt again.                                         |
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+Wrong passphrase on the decrypt command is a no-op: the file is not changed
+and you get a notice. Same for corrupted blocks.
 
-## Improve code quality with eslint
+In a reading-view card, a wrong passphrase shows an inline error and a **Try
+another passphrase** button — use it when the block was encrypted with a key
+the plugin does not have in memory yet.
 
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code.
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/obsidianmd/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
+## Settings
 
-## Funding URL
+The plugin has a single setting under **Settings → Community plugins →
+Inline Secret Block**:
 
-You can include funding URLs where people who use your plugin can financially support it.
+- **Always show secret preview** — when enabled, every `secret-lock` block
+  whose key is already in memory reveals automatically in reading view,
+  without you having to press **Show**. Blocks whose key is *not* in memory
+  stay hidden behind the lock card as usual. Off by default.
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+## Cryptography
 
-```json
-{
-	"fundingUrl": "https://buymeacoffee.com"
-}
+- **AES-256-GCM** for confidentiality and integrity. A wrong passphrase or
+  any tampering with the ciphertext is detected by GCM's authentication tag.
+- **PBKDF2-SHA-256, 250 000 iterations** to derive the key from your
+  passphrase.
+- Per-block random **16-byte salt** and **12-byte IV**. Both are prepended to
+  the ciphertext and the whole `salt ‖ iv ‖ ciphertext+tag` blob is
+  base64-encoded — that is what you see between the fences.
+- All primitives come from the platform Web Crypto API (`crypto.subtle`). No
+  third-party crypto dependencies.
+- Derived keys are cached in memory keyed by `(passphrase fingerprint, salt)`
+  so opening a note with many blocks does not re-run PBKDF2 each time.
+
+## Threat model
+
+What the plugin **does** protect:
+
+- **The content of the secret in the file on disk.** Whoever reads the
+  `.md` file — sync provider, cloud backup, AI agent that crawls the vault,
+  another Obsidian plugin — sees ciphertext, not your password.
+
+What the plugin **does not** protect, and these are real:
+
+- **Plaintext residues after in-place encryption.** Once you have typed the
+  secret into a `secret` block, the plaintext may already exist in:
+  - the editor's undo history (cleared when you reload the file),
+  - Obsidian's File Recovery snapshots,
+  - your sync provider's version history,
+  - filesystem-level backups (Time Machine, restic, etc.).
+
+  **Recommendation: enter the secret in a `secret` block and run encrypt
+  before the first sync of the file.** If the file has already been synced
+  with plaintext, assume the plaintext is out there forever and rotate the
+  affected credential.
+
+- **Plaintext on screen.** Once you press **Show** (or **Copy**), the secret
+  is in the DOM and the clipboard. Anything that can read your DOM (other
+  plugins, screen readers, accessibility tools, screenshots) can read it.
+
+- **No passphrase recovery.** Forget the passphrase, lose the data. There is
+  no escrow, no hint, no recovery email.
+
+- **The cryptography has not been independently audited.** The primitives
+  are standard and used as documented, but you should treat this as a
+  best-effort tool, not a vetted security product. If your threat model
+  requires audited crypto, use a dedicated password manager.
+
+- **The key picker leaks the first and last character of each passphrase.**
+  The label shown next to each in-memory key is `<first>...<last> <hash6>`,
+  so an attacker who briefly sees the picker learns two characters and
+  ~24 bits of the hash. This is an intentional UX trade-off so you can tell
+  keys apart at a glance; it makes short or low-entropy passphrases noticeably
+  easier to brute-force. Use long, high-entropy passphrases.
+
+Passphrases are held in memory for the duration of your Obsidian session
+(or until you run **Forget all passphrases**). They are never written to disk
+and never sent over the network. The plugin does not write any persistent
+state at all.
+
+## Installation
+
+### Manual install
+
+1. Download `main.js`, `manifest.json`, and `styles.css` from the latest
+   GitHub release.
+2. Copy them into `<Vault>/.obsidian/plugins/inline-secret-block/` (create
+   the folder).
+3. In Obsidian, open **Settings → Community plugins**, reload the plugin
+   list, and enable **Inline Secret Block**.
+
+### Build from source
+
+```bash
+git clone https://github.com/vnrtmvn/obsidian-inline-secret-block
+cd obsidian-inline-secret-block
+npm install
+npm run build
 ```
 
-If you have multiple URLs, you can also do:
+`main.js` is produced at the repository root. Copy it together with
+`manifest.json` and `styles.css` as above.
 
-```json
-{
-	"fundingUrl": {
-		"Buy Me a Coffee": "https://buymeacoffee.com",
-		"GitHub Sponsor": "https://github.com/sponsors",
-		"Patreon": "https://www.patreon.com/"
-	}
-}
+### One-shot local install script
+
+For convenience there is a `build_local.sh` script at the repo root that
+builds the plugin and stages the install-ready files in one go:
+
+```bash
+./build_local.sh
 ```
 
-## API Documentation
+What it does:
 
-See https://docs.obsidian.md
+1. Runs `npm install` if `node_modules/` is missing.
+2. Runs `npm run build` (type check + esbuild production bundle).
+3. Reads the plugin id from `manifest.json` and stages `main.js`,
+   `manifest.json`, and `styles.css` into `output/<plugin-id>/`.
+
+After the script finishes, copy `output/inline-secret-block/` into
+`<Vault>/.obsidian/plugins/` and reload Obsidian. The `output/` directory
+is gitignored, so you can run the script as often as you like without
+polluting the working tree.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

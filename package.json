@@ -1,18 +1,35 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidian-inline-secret-block",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "Obsidian plugin that auto-encrypts fenced secret blocks inside notes with AES-256-GCM and supports multiple in-memory keys.",
 	"main": "main.js",
 	"type": "module",
+	"author": "Vladimir Artamonov <https://github.com/vnrtmvn>",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/vnrtmvn/obsidian-inline-secret-block"
+	},
+	"bugs": {
+		"url": "https://github.com/vnrtmvn/obsidian-inline-secret-block/issues"
+	},
+	"homepage": "https://github.com/vnrtmvn/obsidian-inline-secret-block#readme",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"lint": "eslint ."
 	},
-	"keywords": [],
-	"license": "0-BSD",
+	"keywords": [
+		"obsidian",
+		"obsidian-plugin",
+		"encryption",
+		"secret",
+		"password",
+		"aes-gcm"
+	],
+	"license": "MIT",
 	"devDependencies": {
+		"@codemirror/view": "^6.38.6",
 		"@eslint/js": "^9.39.4",
 		"@types/node": "^22.15.17",
 		"esbuild": "0.25.5",

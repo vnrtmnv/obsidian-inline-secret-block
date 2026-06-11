@@ -1,8 +1,98 @@
-/*
+/* Inline Secret Block styles. */
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.isb-secret-card {
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+	border-radius: 6px;
+	padding: 0.75em;
+	margin: 0.5em 0;
+}
 
-If your plugin does not need CSS, delete this file.
+.isb-secret-card__header {
+	display: flex;
+	align-items: center;
+	gap: 0.5em;
+	color: var(--text-muted);
+}
 
-*/
+.isb-secret-card__icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.isb-secret-card__label {
+	font-size: 0.9em;
+	font-weight: 500;
+}
+
+.isb-secret-card__buttons {
+	display: flex;
+	gap: 0.5em;
+	margin-top: 0.5em;
+}
+
+.isb-secret-card__pre {
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	padding: 0.5em;
+	margin: 0.5em 0 0 0;
+	white-space: pre-wrap;
+	overflow-x: auto;
+	color: var(--text-normal);
+	font-family: var(--font-monospace);
+}
+
+.isb-secret-card__error {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5em;
+	margin-top: 0.5em;
+	color: var(--text-error);
+}
+
+.isb-secret-card--error .isb-secret-card__header {
+	color: var(--text-error);
+}
+
+.isb-modal-hint {
+	color: var(--text-muted);
+	font-size: 0.9em;
+}
+
+.isb-modal-buttons {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5em;
+	margin-top: 1em;
+}
+
+.isb-key-section-title {
+	color: var(--text-muted);
+	font-size: 0.85em;
+	margin-top: 0.75em;
+	margin-bottom: 0.25em;
+}
+
+.isb-key-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25em;
+}
+
+.isb-key-button {
+	width: 100%;
+	text-align: left;
+	font-family: var(--font-monospace);
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	padding: 0.4em 0.6em;
+	cursor: pointer;
+}
+
+.isb-key-button:hover {
+	background: var(--background-modifier-hover);
+}
