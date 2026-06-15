@@ -48,7 +48,7 @@ export async function decrypt(
 	payloadB64: string,
 	passphrase: string,
 ): Promise<string> {
-	let payload: Uint8Array<ArrayBuffer>;
+	let payload: Uint8Array;
 	try {
 		payload = fromBase64(payloadB64);
 	} catch {
@@ -90,7 +90,7 @@ export const passphraseId = sha256Hex;
 
 async function deriveKey(
 	passphrase: string,
-	salt: Uint8Array<ArrayBuffer>,
+	salt: Uint8Array,
 ): Promise<CryptoKey> {
 	const fp = await sha256Hex(passphrase);
 	const cacheKey = fp + ':' + toHex(salt);
@@ -107,7 +107,12 @@ async function deriveKey(
 	);
 
 	const key = await subtle.deriveKey(
-		{ name: 'PBKDF2', hash: HASH, salt, iterations: PBKDF2_ITERS },
+		{
+			name: 'PBKDF2',
+			hash: HASH,
+			salt: new Uint8Array(salt),
+			iterations: PBKDF2_ITERS,
+		},
 		baseKey,
 		{ name: 'AES-GCM', length: KEY_LEN },
 		false,
@@ -118,7 +123,7 @@ async function deriveKey(
 	return key;
 }
 
-function encodeUtf8(s: string): Uint8Array<ArrayBuffer> {
+function encodeUtf8(s: string) {
 	return new Uint8Array(enc.encode(s));
 }
 
@@ -138,7 +143,7 @@ function toBase64(bytes: Uint8Array): string {
 	return btoa(s);
 }
 
-function fromBase64(s: string): Uint8Array<ArrayBuffer> {
+function fromBase64(s: string): Uint8Array {
 	const cleaned = s.replace(/\s+/g, '');
 	if (cleaned.length === 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(cleaned)) {
 		throw new Error('Invalid base64');

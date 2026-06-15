@@ -162,7 +162,7 @@ state at all.
 ### Build from source
 
 ```bash
-git clone https://github.com/vnrtmvn/obsidian-inline-secret-block
+git clone https://github.com/vnrtmnv/obsidian-inline-secret-block
 cd obsidian-inline-secret-block
 npm install
 npm run build

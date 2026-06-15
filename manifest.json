@@ -4,7 +4,7 @@
 	"version": "1.0.0",
 	"minAppVersion": "1.4.0",
 	"description": "Auto-encrypt fenced secret blocks inside notes with AES-256-GCM. Multi-key passphrase support keeps passwords and tokens safe from sync, backups, and AI agents reading the vault.",
-	"author": "vnrtmvn",
-	"authorUrl": "https://github.com/vnrtmvn",
+	"author": "vnrtmnv",
+	"authorUrl": "https://github.com/vnrtmnv",
 	"isDesktopOnly": false
 }

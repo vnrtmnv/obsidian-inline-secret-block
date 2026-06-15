@@ -4,15 +4,15 @@
 	"description": "Obsidian plugin that auto-encrypts fenced secret blocks inside notes with AES-256-GCM and supports multiple in-memory keys.",
 	"main": "main.js",
 	"type": "module",
-	"author": "Vladimir Artamonov <https://github.com/vnrtmvn>",
+	"author": "Vladimir Artamonov <https://github.com/vnrtmnv>",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/vnrtmvn/obsidian-inline-secret-block"
+		"url": "https://github.com/vnrtmnv/obsidian-inline-secret-block"
 	},
 	"bugs": {
-		"url": "https://github.com/vnrtmvn/obsidian-inline-secret-block/issues"
+		"url": "https://github.com/vnrtmnv/obsidian-inline-secret-block/issues"
 	},
-	"homepage": "https://github.com/vnrtmvn/obsidian-inline-secret-block#readme",
+	"homepage": "https://github.com/vnrtmnv/obsidian-inline-secret-block#readme",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
