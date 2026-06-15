@@ -1,7 +1,7 @@
 {
 	"id": "inline-secret-block",
 	"name": "Inline Secret Block",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "1.4.0",
 	"description": "Auto-encrypt fenced secret blocks inside notes with AES-256-GCM. Multi-key passphrase support keeps passwords and tokens safe from sync, backups, and AI agents reading the vault.",
 	"author": "vnrtmnv",
