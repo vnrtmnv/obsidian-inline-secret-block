@@ -1,7 +1,9 @@
-import { Plugin } from 'obsidian';
+import { MarkdownView, Plugin } from 'obsidian';
 import { setupAutoEncrypt } from './autoencrypt';
 import { registerCommands } from './commands';
 import { clearKeyCache } from './crypto';
+import { makeInlineLivePreviewExtension } from './inlineLivePreview';
+import { buildInlineSecretChip } from './inlineRender';
 import { KeyStore } from './keystore';
 import { renderSecretLockBlock } from './render';
 import { DEFAULT_SETTINGS, ISBSettings, ISBSettingTab } from './settings';
@@ -30,6 +32,36 @@ export default class InlineSecretBlockPlugin extends Plugin {
 					mdCtx,
 				);
 			},
+		);
+
+		this.registerMarkdownPostProcessor((el, mdCtx) => {
+			el.querySelectorAll('code').forEach((code) => {
+				if (code.closest('pre')) return;
+				const raw = code.textContent ?? '';
+				if (!raw.startsWith('secret-lock ')) return;
+				const payload = raw.slice('secret-lock '.length);
+				const chip = buildInlineSecretChip(
+					{
+						app: this.app,
+						keystore: this.keystore,
+						intendedKeys: this.intendedKeys,
+						resolveSourcePath: () => mdCtx.sourcePath,
+					},
+					payload,
+				);
+				code.replaceWith(chip);
+			});
+		});
+
+		this.registerEditorExtension(
+			makeInlineLivePreviewExtension({
+				app: this.app,
+				keystore: this.keystore,
+				intendedKeys: this.intendedKeys,
+				resolveSourcePath: () =>
+					this.app.workspace.getActiveViewOfType(MarkdownView)?.file
+						?.path,
+			}),
 		);
 
 		setupAutoEncrypt({

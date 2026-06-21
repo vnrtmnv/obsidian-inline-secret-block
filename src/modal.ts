@@ -91,12 +91,14 @@ export type KeyChoice =
 
 export interface KeyChoiceModalOptions {
 	keys: KeyEntry[];
+	preferredId?: string;
 	onChoose: (choice: KeyChoice) => void;
 	onCancel?: () => void;
 }
 
 export class KeyChoiceModal extends Modal {
 	private readonly keys: KeyEntry[];
+	private readonly preferredId?: string;
 	private readonly onChoose: (choice: KeyChoice) => void;
 	private readonly onCancel?: () => void;
 
@@ -107,6 +109,7 @@ export class KeyChoiceModal extends Modal {
 	constructor(app: App, options: KeyChoiceModalOptions) {
 		super(app);
 		this.keys = options.keys;
+		this.preferredId = options.preferredId;
 		this.onChoose = options.onChoose;
 		this.onCancel = options.onCancel;
 	}
@@ -117,6 +120,7 @@ export class KeyChoiceModal extends Modal {
 
 		contentEl.createEl('h2', { text: 'Encrypt with key' });
 
+		let focusBtn: HTMLButtonElement | undefined;
 		if (this.keys.length > 0) {
 			contentEl.createDiv({
 				cls: 'isb-key-section-title',
@@ -128,6 +132,7 @@ export class KeyChoiceModal extends Modal {
 					cls: 'isb-key-button',
 					text: k.label,
 				});
+				if (!focusBtn || k.id === this.preferredId) focusBtn = btn;
 				btn.addEventListener('click', () => {
 					if (this.resolved) return;
 					this.resolved = true;
@@ -174,7 +179,8 @@ export class KeyChoiceModal extends Modal {
 		});
 
 		this.refresh();
-		this.input?.focus();
+		if (focusBtn) focusBtn.focus();
+		else this.input?.focus();
 	}
 
 	onClose() {

@@ -1,16 +1,18 @@
 # Inline Secret Block
 
-An Obsidian plugin that encrypts fenced code blocks inside your notes using
-AES-256-GCM and a passphrase. Useful when your vault is read by sync services,
-backup tools, or AI agents and you do not want passwords, tokens, or other
-secrets sitting in plaintext.
+An Obsidian plugin that encrypts secrets inside your notes using AES-256-GCM
+and a passphrase — both **fenced code blocks** (multi-line) and **single-line
+inline code spans**. Useful when your vault is read by sync services, backup
+tools, or AI agents and you do not want passwords, tokens, or other secrets
+sitting in plaintext.
 
-You write a `secret` block, the plugin asks for a passphrase as soon as the
-block is closed, and rewrites it as a `secret-lock` block whose body is opaque
-ciphertext. In reading view the block renders as a small card with a **Show**
-button that decrypts it in place. Multiple passphrases can be in use at the
-same time — the plugin remembers each one you have entered in the current
-session and offers them as choices for new blocks.
+You write a `secret` block (or a `` `secret …` `` inline span), the plugin asks
+for a passphrase as soon as you move away from it, and rewrites it as a
+`secret-lock` form whose body is opaque ciphertext. In reading view and Live
+Preview the encrypted secret renders as something you can reveal or copy in
+place. Multiple passphrases can be in use at the same time — the plugin
+remembers each one you have entered in the current session and always lets you
+choose which key to use for a new secret.
 
 ## How it works
 
@@ -55,20 +57,48 @@ you click outside or stop typing. The plugin tries every passphrase it has
 in memory automatically — you only see the password modal if none of them
 fit.
 
-Once you've used a key in a particular note, the plugin remembers it as the
-"intended key" for that file: subsequent auto-encrypt operations in the same
-file skip the chooser and reuse that key directly. Pick a different key from
-the chooser any time to override.
+When you already have keys in memory, the chooser is shown every time you
+encrypt a new secret, so you stay in control of which key it uses. The last
+key you used in the current file is listed first and pre-focused, so reusing
+it is a single click (just press **Enter**), while picking a different key or
+typing a brand-new passphrase is always one step away.
 
-If you need to convert many blocks in one go (e.g. before bulk-editing a
+## Single-line (inline) secrets
+
+For short secrets you do not need a whole fenced block. Wrap the value in an
+inline code span prefixed with `secret `:
+
+```md
+password: `secret hunter2`
+```
+
+As soon as you move the cursor off that span, the plugin prompts for a key and
+rewrites it as:
+
+```md
+password: `secret-lock QmFzZTY0Li4u`
+```
+
+In both Live Preview and reading view the `secret-lock` span renders as a
+compact chip with a lock icon:
+
+- **Click the chip** to reveal the value inline; click again to hide it.
+- **Click the copy icon** to copy the plaintext to the clipboard without
+  revealing it on screen.
+
+Inline secrets deliberately have **no custom label/alias** (unlike fenced
+blocks) to keep them simple. In Live Preview, move the cursor into the chip to
+edit the raw `secret-lock` text.
+
+If you need to convert many secrets in one go (e.g. before bulk-editing a
 note), run **Decrypt secret-lock blocks in current note** to revert all
-`secret-lock` blocks in the active note back to `secret`.
+`secret-lock` blocks **and** inline spans in the active note back to `secret`.
 
 ## Commands
 
 | Command                                       | What it does                                                                                                                       |
 | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Decrypt secret-lock blocks in current note**| Decrypts every `` ```secret-lock `` block back to `` ```secret `` so you can edit it. Tries every key in memory; if none fits, prompts. |
+| **Decrypt secret-lock blocks in current note**| Decrypts every `` ```secret-lock `` block and `` `secret-lock …` `` inline span back to `secret` so you can edit it. Tries every key in memory; if none fits, prompts. |
 | **Forget all passphrases**                    | Clears every passphrase and derived-key from memory. The next operation will prompt again.                                         |
 
 Wrong passphrase on the decrypt command is a no-op: the file is not changed

@@ -7,9 +7,14 @@ import {
 	Plugin,
 	debounce,
 } from 'obsidian';
-import { Block, findBlocks, renderSecretLock, replaceBlocks } from './blocks';
+import { Block, findBlocks, renderSecretLock } from './blocks';
 import { encrypt } from './crypto';
-import { KeyStore } from './keystore';
+import {
+	InlineSecret,
+	findInlineSecrets,
+	renderInlineSecretLock,
+} from './inline';
+import { KeyEntry, KeyStore } from './keystore';
 import { KeyChoice, KeyChoiceModal, PassphraseModal } from './modal';
 
 export interface AutoEncryptCtx {
@@ -18,6 +23,10 @@ export interface AutoEncryptCtx {
 	keystore: KeyStore;
 	intendedKeys: Map<string, string>;
 }
+
+type Candidate =
+	| { type: 'block'; block: Block }
+	| { type: 'inline'; inline: InlineSecret };
 
 const DEBOUNCE_MS = 1500;
 const PROMPT_THROTTLE_MS = 5000;
@@ -28,28 +37,52 @@ export function setupAutoEncrypt(ctx: AutoEncryptCtx): void {
 	let lastPromptAt = 0;
 	let wasInsideSecret = false;
 
+	const activeFilePath = (): string | null =>
+		ctx.app.workspace.getActiveViewOfType(MarkdownView)?.file?.path ?? null;
+
 	const cursorInsideBlock = (line: number, blocks: Block[]): boolean =>
 		blocks.some((b) => line > b.startLine && line < b.endLine);
+
+	const findCandidate = (editor: Editor): Candidate | null => {
+		const text = editor.getValue();
+		const cursor = editor.getCursor();
+
+		const block = findBlocks(text, 'secret').find(
+			(b) =>
+				b.body.length > 0 &&
+				!(cursor.line > b.startLine && cursor.line < b.endLine),
+		);
+		if (block) return { type: 'block', block };
+
+		const inline = findInlineSecrets(text, 'secret').find(
+			(s) =>
+				!(
+					cursor.line === s.line &&
+					cursor.ch >= s.chStart &&
+					cursor.ch <= s.chEnd
+				),
+		);
+		if (inline) return { type: 'inline', inline };
+
+		return null;
+	};
 
 	const tryPrompt = async (editor: Editor): Promise<void> => {
 		if (busy || programmaticWrite) return;
 		if (Date.now() - lastPromptAt < PROMPT_THROTTLE_MS) return;
 
-		const text = editor.getValue();
-		const blocks = findBlocks(text, 'secret');
-		if (blocks.length === 0) return;
-		const cursorLine = editor.getCursor().line;
-
-		const target = blocks.find(
-			(b) =>
-				b.body.length > 0 &&
-				!(cursorLine > b.startLine && cursorLine < b.endLine),
-		);
-		if (!target) return;
+		const candidate = findCandidate(editor);
+		if (!candidate) return;
 
 		busy = true;
 		try {
-			await promptAndEncrypt(editor, target);
+			const passphrase = await resolvePassphrase(activeFilePath());
+			if (passphrase === null) return;
+			if (candidate.type === 'block') {
+				await applyBlockEncryption(editor, candidate.block, passphrase);
+			} else {
+				await applyInlineEncryption(editor, candidate.inline, passphrase);
+			}
 		} catch (e) {
 			new Notice(`Encryption failed: ${(e as Error).message}`);
 		} finally {
@@ -90,82 +123,71 @@ export function setupAutoEncrypt(ctx: AutoEncryptCtx): void {
 		}),
 	]);
 
-	const promptAndEncrypt = (
-		editor: Editor,
-		block: Block,
-	): Promise<void> => {
+	const orderKeys = (
+		keys: KeyEntry[],
+		preferredId: string | undefined,
+	): KeyEntry[] => {
+		if (!preferredId) return keys;
+		const pref = keys.filter((k) => k.id === preferredId);
+		if (pref.length === 0) return keys;
+		return [...pref, ...keys.filter((k) => k.id !== preferredId)];
+	};
+
+	const resolvePassphrase = (
+		filePath: string | null,
+	): Promise<string | null> => {
 		return new Promise((resolve) => {
-			const finish = async (passphrase: string) => {
-				try {
-					await applyEncryption(editor, block, passphrase);
-				} catch (e) {
-					new Notice(`Encryption failed: ${(e as Error).message}`);
-				}
-				resolve();
-			};
-
-			const cancel = () => resolve();
-
-			const activeFile =
-				ctx.app.workspace.getActiveViewOfType(MarkdownView)?.file ?? null;
-			const filePath = activeFile?.path ?? null;
-			if (filePath !== null) {
-				const stickyId = ctx.intendedKeys.get(filePath);
-				if (stickyId !== undefined) {
-					const passphrase = ctx.keystore.getPassphrase(stickyId);
-					if (passphrase !== null) {
-						void finish(passphrase);
-						return;
-					}
-					ctx.intendedKeys.delete(filePath);
-				}
-			}
-
 			const keys = ctx.keystore.list();
 
 			if (keys.length === 0) {
 				new PassphraseModal(ctx.app, {
-					title: 'Encrypt block with new passphrase',
-					onSubmit: (passphrase) => {
-						void finish(passphrase);
-					},
-					onCancel: cancel,
+					title: 'Encrypt with new passphrase',
+					onSubmit: (passphrase) => resolve(passphrase),
+					onCancel: () => resolve(null),
 				}).open();
-			} else {
-				new KeyChoiceModal(ctx.app, {
-					keys,
-					onChoose: (choice: KeyChoice) => {
-						if (choice.kind === 'existing') {
-							const passphrase = ctx.keystore.getPassphrase(choice.id);
-							if (passphrase === null) {
-								new Notice('Selected key is no longer in store');
-								resolve();
-								return;
-							}
-							void finish(passphrase);
-						} else {
-							void finish(choice.passphrase);
-						}
-					},
-					onCancel: cancel,
-				}).open();
+				return;
 			}
+
+			const preferredId =
+				filePath !== null
+					? ctx.intendedKeys.get(filePath)
+					: undefined;
+
+			new KeyChoiceModal(ctx.app, {
+				keys: orderKeys(keys, preferredId),
+				preferredId,
+				onChoose: (choice: KeyChoice) => {
+					if (choice.kind === 'existing') {
+						const passphrase = ctx.keystore.getPassphrase(choice.id);
+						if (passphrase === null) {
+							new Notice('Selected key is no longer in store');
+							resolve(null);
+							return;
+						}
+						resolve(passphrase);
+					} else {
+						resolve(choice.passphrase);
+					}
+				},
+				onCancel: () => resolve(null),
+			}).open();
 		});
 	};
 
-	const applyEncryption = async (
+	const rememberKey = async (passphrase: string): Promise<void> => {
+		const entry = await ctx.keystore.add(passphrase);
+		const filePath = activeFilePath();
+		if (filePath) ctx.intendedKeys.set(filePath, entry.id);
+	};
+
+	const applyBlockEncryption = async (
 		editor: Editor,
 		block: Block,
 		passphrase: string,
 	): Promise<void> => {
-		const entry = await ctx.keystore.add(passphrase);
-		const activeFile =
-			ctx.app.workspace.getActiveViewOfType(MarkdownView)?.file ?? null;
-		if (activeFile) ctx.intendedKeys.set(activeFile.path, entry.id);
+		await rememberKey(passphrase);
 		const ciphertext = await encrypt(block.body, passphrase);
-		const currentText = editor.getValue();
-		const blocks = findBlocks(currentText, 'secret');
-		const match = blocks.find(
+		const match = findBlocks(editor.getValue(), 'secret').find(
 			(b) =>
 				b.startLine === block.startLine &&
 				b.indent === block.indent &&
@@ -175,12 +197,44 @@ export function setupAutoEncrypt(ctx: AutoEncryptCtx): void {
 			new Notice('Block changed before encryption; skipped');
 			return;
 		}
-		const newText = replaceBlocks(currentText, [match], (b) =>
-			renderSecretLock(b.indent, b.fenceLen, ciphertext, b.info),
-		);
 		programmaticWrite = true;
 		try {
-			editor.setValue(newText);
+			editor.replaceRange(
+				renderSecretLock(
+					match.indent,
+					match.fenceLen,
+					ciphertext,
+					match.info,
+				),
+				{ line: match.startLine, ch: 0 },
+				{ line: match.endLine, ch: editor.getLine(match.endLine).length },
+			);
+		} finally {
+			programmaticWrite = false;
+		}
+	};
+
+	const applyInlineEncryption = async (
+		editor: Editor,
+		inline: InlineSecret,
+		passphrase: string,
+	): Promise<void> => {
+		await rememberKey(passphrase);
+		const ciphertext = await encrypt(inline.body, passphrase);
+		const match = findInlineSecrets(editor.getValue(), 'secret').find(
+			(s) => s.body === inline.body,
+		);
+		if (!match) {
+			new Notice('Inline secret changed before encryption; skipped');
+			return;
+		}
+		programmaticWrite = true;
+		try {
+			editor.replaceRange(
+				renderInlineSecretLock(ciphertext),
+				{ line: match.line, ch: match.chStart },
+				{ line: match.line, ch: match.chEnd },
+			);
 		} finally {
 			programmaticWrite = false;
 		}

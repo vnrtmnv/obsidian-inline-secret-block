@@ -5,7 +5,12 @@ import {
 	clearKeyCache,
 	decrypt,
 } from './crypto';
-import { findBlocks, renderSecret, replaceBlocks } from './blocks';
+import { Block, findBlocks, renderSecret } from './blocks';
+import {
+	InlineSecret,
+	findInlineSecrets,
+	renderInlinePlain,
+} from './inline';
 import { KeyStore } from './keystore';
 import { PassphraseModal } from './modal';
 
@@ -39,21 +44,41 @@ export function registerCommands(ctx: CommandContext): void {
 	});
 }
 
+type Target =
+	| { kind: 'block'; block: Block }
+	| { kind: 'inline'; inline: InlineSecret };
+
+interface RangeEdit {
+	fromLine: number;
+	fromCh: number;
+	toLine: number;
+	toCh: number;
+	text: string;
+}
+
 async function runDecrypt(ctx: CommandContext, editor: Editor): Promise<void> {
 	const text = editor.getValue();
 	const blocks = findBlocks(text, 'secret-lock');
-	if (blocks.length === 0) {
+	const inlines = findInlineSecrets(text, 'secret-lock');
+	if (blocks.length === 0 && inlines.length === 0) {
 		new Notice('No secret-lock blocks found');
 		return;
 	}
 
-	const plaintexts: (string | null)[] = blocks.map(() => null);
+	const targets: Target[] = [
+		...blocks.map((block): Target => ({ kind: 'block', block })),
+		...inlines.map((inline): Target => ({ kind: 'inline', inline })),
+	];
+	const payloadOf = (t: Target): string =>
+		t.kind === 'block' ? t.block.body : t.inline.body;
+
+	const plaintexts: (string | null)[] = targets.map(() => null);
 	let pending = 0;
 	let lastUsedId: string | null = null;
 
-	for (let i = 0; i < blocks.length; i++) {
+	for (let i = 0; i < targets.length; i++) {
 		try {
-			const hit = await ctx.keystore.tryDecrypt(blocks[i]!.body);
+			const hit = await ctx.keystore.tryDecrypt(payloadOf(targets[i]!));
 			if (hit !== null) {
 				plaintexts[i] = hit.plaintext;
 				lastUsedId = hit.id;
@@ -62,9 +87,7 @@ async function runDecrypt(ctx: CommandContext, editor: Editor): Promise<void> {
 			}
 		} catch (e) {
 			if (e instanceof MalformedPayloadError) {
-				new Notice(
-					`Block at line ${blocks[i]!.startLine + 1} is corrupted: ${e.message}`,
-				);
+				new Notice(`A secret-lock block is corrupted: ${e.message}`);
 				return;
 			}
 			throw e;
@@ -75,19 +98,17 @@ async function runDecrypt(ctx: CommandContext, editor: Editor): Promise<void> {
 		const passphrase = await promptPassphrase(ctx.app);
 		if (passphrase === null) return;
 
-		for (let i = 0; i < blocks.length; i++) {
+		for (let i = 0; i < targets.length; i++) {
 			if (plaintexts[i] !== null) continue;
 			try {
-				plaintexts[i] = await decrypt(blocks[i]!.body, passphrase);
+				plaintexts[i] = await decrypt(payloadOf(targets[i]!), passphrase);
 			} catch (e) {
 				if (e instanceof WrongPassphraseError) {
 					new Notice('Wrong passphrase');
 					return;
 				}
 				if (e instanceof MalformedPayloadError) {
-					new Notice(
-						`Block at line ${blocks[i]!.startLine + 1} is corrupted: ${e.message}`,
-					);
+					new Notice(`A secret-lock block is corrupted: ${e.message}`);
 					return;
 				}
 				throw e;
@@ -103,12 +124,39 @@ async function runDecrypt(ctx: CommandContext, editor: Editor): Promise<void> {
 		if (path) ctx.intendedKeys.set(path, lastUsedId);
 	}
 
-	let idx = 0;
-	const newText = replaceBlocks(text, blocks, (b) =>
-		renderSecret(b.indent, b.fenceLen, plaintexts[idx++]!, b.info),
-	);
-	editor.setValue(newText);
-	new Notice(`Decrypted ${blocks.length} block(s)`);
+	const edits: RangeEdit[] = targets.map((t, i): RangeEdit => {
+		const plain = plaintexts[i]!;
+		if (t.kind === 'block') {
+			const b = t.block;
+			return {
+				fromLine: b.startLine,
+				fromCh: 0,
+				toLine: b.endLine,
+				toCh: editor.getLine(b.endLine).length,
+				text: renderSecret(b.indent, b.fenceLen, plain, b.info),
+			};
+		}
+		const s = t.inline;
+		return {
+			fromLine: s.line,
+			fromCh: s.chStart,
+			toLine: s.line,
+			toCh: s.chEnd,
+			text: renderInlinePlain(plain),
+		};
+	});
+
+	// Apply bottom-up so earlier ranges keep their coordinates. Scroll position
+	// is preserved because we never call editor.setValue().
+	edits.sort((a, b) => b.fromLine - a.fromLine || b.fromCh - a.fromCh);
+	for (const e of edits) {
+		editor.replaceRange(
+			e.text,
+			{ line: e.fromLine, ch: e.fromCh },
+			{ line: e.toLine, ch: e.toCh },
+		);
+	}
+	new Notice(`Decrypted ${targets.length} secret(s)`);
 }
 
 function promptPassphrase(app: App): Promise<string | null> {

@@ -96,3 +96,55 @@
 .isb-key-button:hover {
 	background: var(--background-modifier-hover);
 }
+
+/* Inline secret chip (single-line secrets). */
+
+.isb-inline-secret {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3em;
+	padding: 0 0.4em;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	font-family: var(--font-monospace);
+	font-size: 0.9em;
+	line-height: 1.4;
+	cursor: pointer;
+	vertical-align: baseline;
+}
+
+.isb-inline-secret__icon,
+.isb-inline-secret__copy {
+	display: inline-flex;
+	align-items: center;
+	color: var(--text-muted);
+}
+
+.isb-inline-secret__icon svg,
+.isb-inline-secret__copy svg {
+	width: 0.9em;
+	height: 0.9em;
+}
+
+.isb-inline-secret__copy {
+	cursor: pointer;
+}
+
+.isb-inline-secret__copy:hover {
+	color: var(--text-normal);
+}
+
+.isb-inline-secret__value {
+	user-select: text;
+}
+
+.isb-inline-secret--error {
+	border-color: var(--text-error);
+	color: var(--text-error);
+}
+
+.isb-inline-secret--error .isb-inline-secret__icon {
+	color: var(--text-error);
+}

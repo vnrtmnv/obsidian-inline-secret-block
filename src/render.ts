@@ -240,10 +240,14 @@ export function renderSecretLockBlock(
 				new Notice('Block not found in editor');
 				return;
 			}
-			const newText = replaceBlocks(docText, [target], (b) =>
-				renderSecret(b.indent, b.fenceLen, plain, b.info),
+			editor.replaceRange(
+				renderSecret(target.indent, target.fenceLen, plain, target.info),
+				{ line: target.startLine, ch: 0 },
+				{
+					line: target.endLine,
+					ch: editor.getLine(target.endLine).length,
+				},
 			);
-			editor.setValue(newText);
 			editor.setCursor({
 				line: target.startLine + 1,
 				ch: target.indent.length,
