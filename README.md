@@ -82,13 +82,17 @@ password: `secret-lock QmFzZTY0Li4u`
 ```
 
 In both Live Preview and reading view the `secret-lock` span renders as a
-compact chip with a lock icon:
+compact chip with a lock icon and three buttons:
 
-- **Click the chip** to copy the plaintext to the clipboard (a "Copied" notice
-  appears; the value is never shown on screen).
-- **Click the edit (pencil) icon** to decrypt the span back to a plain
-  `secret` span so you can change it. Auto-encrypt re-locks it with the same
-  key — no passphrase prompt (see below).
+- **Show** (eye) — reveal the value inline; click again to hide it.
+- **Copy** — copy the plaintext to the clipboard (a "Copied" notice appears;
+  the value is never shown on screen). Clicking the chip body copies too.
+- **Edit** (pencil) — decrypt the span back to a plain `secret` span so you
+  can change it. Auto-encrypt re-locks it with the same key — no passphrase
+  prompt (see below).
+
+The **Always show secret preview** setting applies to inline chips as well:
+when enabled, a chip whose key is already in memory reveals automatically.
 
 Inline secrets deliberately have **no custom label/alias** (unlike fenced
 blocks) to keep them simple. In Live Preview, move the cursor into the chip to
@@ -118,9 +122,9 @@ The plugin has a single setting under **Settings → Community plugins →
 Inline Secret Block**:
 
 - **Always show secret preview** — when enabled, every `secret-lock` block
-  whose key is already in memory reveals automatically in reading view,
-  without you having to press **Show**. Blocks whose key is *not* in memory
-  stay hidden behind the lock card as usual. Off by default.
+  **and inline chip** whose key is already in memory reveals automatically,
+  without you having to press **Show**. Secrets whose key is *not* in memory
+  stay hidden as usual. Off by default.
 
 ## Cryptography
 

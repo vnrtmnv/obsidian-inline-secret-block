@@ -49,6 +49,7 @@ export default class InlineSecretBlockPlugin extends Plugin {
 					{
 						app: this.app,
 						keystore: this.keystore,
+						settings: this.settings,
 						intendedKeys: this.intendedKeys,
 						reEncryptKeys: this.reEncryptKeys,
 						resolveSourcePath: () => mdCtx.sourcePath,
@@ -63,6 +64,7 @@ export default class InlineSecretBlockPlugin extends Plugin {
 			makeInlineLivePreviewExtension({
 				app: this.app,
 				keystore: this.keystore,
+				settings: this.settings,
 				intendedKeys: this.intendedKeys,
 				reEncryptKeys: this.reEncryptKeys,
 				resolveSourcePath: () =>
