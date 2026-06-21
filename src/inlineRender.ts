@@ -200,6 +200,11 @@ export function buildInlineSecretChip(
 		await ctx.app.vault.modify(file, lines.join('\n'));
 	};
 
+	// In Live Preview the chip is a CM widget; a mousedown would move the
+	// editor cursor into the span, drop the decoration, and expose the raw
+	// `secret-lock …` text. Prevent that so reveal/copy/edit act on the chip.
+	chip.addEventListener('mousedown', (ev) => ev.preventDefault());
+
 	showBtn.addEventListener('click', (ev) => {
 		ev.stopPropagation();
 		if (shown) {
