@@ -52,16 +52,18 @@ and **Show** / **Edit** / **Copy** buttons. Press **Show** to decrypt and
 reveal the content; press **Hide** to clear it from the DOM again. **Copy**
 sends the plaintext to the clipboard without revealing it on screen.
 **Edit** decrypts the block back to a plain `secret` block right in the
-file so you can change it, and auto-encrypt picks it up again as soon as
-you click outside or stop typing. The plugin tries every passphrase it has
-in memory automatically — you only see the password modal if none of them
-fit.
+file so you can change it, and auto-encrypt re-locks it as soon as you click
+outside or stop typing — **with the same key it was encrypted with, without
+asking for a passphrase again**. The plugin tries every passphrase it has in
+memory automatically — you only see the password modal if none of them fit.
 
 When you already have keys in memory, the chooser is shown every time you
-encrypt a new secret, so you stay in control of which key it uses. The last
-key you used in the current file is listed first and pre-focused, so reusing
-it is a single click (just press **Enter**), while picking a different key or
-typing a brand-new passphrase is always one step away.
+encrypt a **new** secret, so you stay in control of which key it uses. The
+last key you used in the current file is listed first and pre-focused, so
+reusing it is a single click (just press **Enter**), while picking a different
+key or typing a brand-new passphrase is always one step away. Re-locking an
+**existing** secret after **Edit** is the exception: it reuses that secret's
+own key automatically and never prompts.
 
 ## Single-line (inline) secrets
 
@@ -82,13 +84,15 @@ password: `secret-lock QmFzZTY0Li4u`
 In both Live Preview and reading view the `secret-lock` span renders as a
 compact chip with a lock icon:
 
-- **Click the chip** to reveal the value inline; click again to hide it.
-- **Click the copy icon** to copy the plaintext to the clipboard without
-  revealing it on screen.
+- **Click the chip** to copy the plaintext to the clipboard (a "Copied" notice
+  appears; the value is never shown on screen).
+- **Click the edit (pencil) icon** to decrypt the span back to a plain
+  `secret` span so you can change it. Auto-encrypt re-locks it with the same
+  key — no passphrase prompt (see below).
 
 Inline secrets deliberately have **no custom label/alias** (unlike fenced
 blocks) to keep them simple. In Live Preview, move the cursor into the chip to
-edit the raw `secret-lock` text.
+edit the raw `secret-lock` text directly.
 
 If you need to convert many secrets in one go (e.g. before bulk-editing a
 note), run **Decrypt secret-lock blocks in current note** to revert all

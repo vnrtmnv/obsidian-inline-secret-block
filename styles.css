@@ -116,23 +116,23 @@
 }
 
 .isb-inline-secret__icon,
-.isb-inline-secret__copy {
+.isb-inline-secret__edit {
 	display: inline-flex;
 	align-items: center;
 	color: var(--text-muted);
 }
 
 .isb-inline-secret__icon svg,
-.isb-inline-secret__copy svg {
+.isb-inline-secret__edit svg {
 	width: 0.9em;
 	height: 0.9em;
 }
 
-.isb-inline-secret__copy {
+.isb-inline-secret__edit {
 	cursor: pointer;
 }
 
-.isb-inline-secret__copy:hover {
+.isb-inline-secret__edit:hover {
 	color: var(--text-normal);
 }
 

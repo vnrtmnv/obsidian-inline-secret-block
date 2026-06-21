@@ -17,6 +17,7 @@ export interface RenderContext {
 	keystore: KeyStore;
 	settings: ISBSettings;
 	intendedKeys: Map<string, string>;
+	reEncryptKeys: Map<string, string>;
 }
 
 interface DecryptResult {
@@ -62,6 +63,7 @@ export function renderSecretLockBlock(
 	errorEl.hide();
 
 	let plaintext: string | null = null;
+	let currentKeyId: string | null = null;
 	let state: 'hidden' | 'shown' | 'error' = 'hidden';
 
 	const setHidden = () => {
@@ -110,6 +112,7 @@ export function renderSecretLockBlock(
 	};
 
 	const noteIntendedKey = (id: string) => {
+		currentKeyId = id;
 		const path = mdCtx?.sourcePath;
 		if (path) ctx.intendedKeys.set(path, id);
 	};
@@ -213,6 +216,10 @@ export function renderSecretLockBlock(
 		if (!sourcePath) {
 			new Notice('Cannot resolve file context');
 			return;
+		}
+		// Re-lock with the same key when auto-encrypt picks this block back up.
+		if (currentKeyId !== null) {
+			ctx.reEncryptKeys.set(sourcePath, currentKeyId);
 		}
 		const file = ctx.app.vault.getAbstractFileByPath(sourcePath);
 		if (!(file instanceof TFile)) {

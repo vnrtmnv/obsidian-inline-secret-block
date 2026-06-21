@@ -8,6 +8,7 @@ export default tseslint.config(
 		'node_modules',
 		'dist',
 		'output',
+		'isb-vault',
 		'esbuild.config.mjs',
 		'version-bump.mjs',
 		'versions.json',

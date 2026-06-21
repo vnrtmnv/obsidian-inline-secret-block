@@ -22,6 +22,7 @@ export interface AutoEncryptCtx {
 	plugin: Plugin;
 	keystore: KeyStore;
 	intendedKeys: Map<string, string>;
+	reEncryptKeys: Map<string, string>;
 }
 
 type Candidate =
@@ -137,6 +138,20 @@ export function setupAutoEncrypt(ctx: AutoEncryptCtx): void {
 		filePath: string | null,
 	): Promise<string | null> => {
 		return new Promise((resolve) => {
+			// Re-locking a secret that was just decrypted for editing: reuse the
+			// same key silently, no prompt. One-shot — consume the hint.
+			if (filePath !== null) {
+				const reKeyId = ctx.reEncryptKeys.get(filePath);
+				if (reKeyId !== undefined) {
+					ctx.reEncryptKeys.delete(filePath);
+					const passphrase = ctx.keystore.getPassphrase(reKeyId);
+					if (passphrase !== null) {
+						resolve(passphrase);
+						return;
+					}
+				}
+			}
+
 			const keys = ctx.keystore.list();
 
 			if (keys.length === 0) {
